@@ -119,3 +119,80 @@ __difftime (time_t time1, time_t time0)
   return time1 < time0 ? - subtract (time0, time1) : subtract (time1, time0);
 }
 strong_alias (__difftime, difftime)
+
+static double subtract64 (__time64_t time1, __time64_t time0)
+{
+  /* Optimize the common special cases where __time64_t
+ can be converted to uintmax_t without losing information.  */
+  uintmax_t dt = (uintmax_t) time1 - (uintmax_t) time0;
+  double delta = dt;
+
+  if (UINTMAX_MAX / 2 < INTMAX_MAX)
+{
+  /* This is a rare host where uintmax_t has padding bits, and possibly
+	 information was lost when converting time_t to uintmax_t.
+	 Check for overflow by comparing dt/2 to (time1/2 - time0/2).
+	 Overflow occurred if they differ by more than a small slop.
+	 Thanks to Clive D.W. Feather for detailed technical advice about
+	 hosts with padding bits.
+
+	 In the following code the "h" prefix means half.  By range
+	 analysis, we have:
+
+			  -0.5 <= ht1 - 0.5*time1 <= 0.5
+			  -0.5 <= ht0 - 0.5*time0 <= 0.5
+			  -1.0 <= dht - 0.5*(time1 - time0) <= 1.0
+
+		 If overflow has not occurred, we also have:
+
+			  -0.5 <= hdt - 0.5*(time1 - time0) <= 0
+			  -1.0 <= dht - hdt <= 1.5
+
+		 and since dht - hdt is an integer, we also have:
+
+			  -1 <= dht - hdt <= 1
+
+		 or equivalently:
+
+			  0 <= dht - hdt + 1 <= 2
+
+		 In the above analysis, all the operators have their exact
+		 mathematical semantics, not C semantics.  However, dht - hdt +
+		 1 is unsigned in C, so it need not be compared to zero.  */
+
+  uintmax_t hdt = dt / 2;
+  __time64_t ht1 = time1 / 2;
+  __time64_t ht0 = time0 / 2;
+  __time64_t dht = ht1 - ht0;
+
+  if (2 < dht - hdt + 1)
+	{
+	  /* Repair delta overflow.
+
+	 The following expression contains a second rounding,
+	 so the result may not be the closest to the true answer.
+	 This problem occurs only with very large differences.
+	 It's too painful to fix this portably.  */
+
+	  delta = dt + 2.0L * (UINTMAX_MAX - UINTMAX_MAX / 2);
+	}
+}
+
+  return delta;
+}
+
+/* Return the difference between TIME1 and TIME0.  */
+double
+__difftime64 (__time64_t time1, __time64_t time0)
+{
+  /* Convert to long double and then subtract if no double-rounding error could
+     result.  */
+
+  if (TYPE_BITS (__time64_t) <= LDBL_MANT_DIG)
+    return (long double) time1 - (long double) time0;
+
+  /* Subtract the smaller integer from the larger, convert the difference to
+     double, and then negate if needed.  */
+
+  return time1 < time0 ? - subtract64 (time0, time1) : subtract64 (time1, time0);
+}
