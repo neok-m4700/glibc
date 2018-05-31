@@ -30,6 +30,13 @@ long int (*VDSO_SYMBOL (clock_gettime)) (clockid_t, struct timespec *)
 long int (*VDSO_SYMBOL (clock_getres)) (clockid_t, struct timespec *)
     attribute_hidden;
 
+int __y2038_linux_support;
+
+int __y2038_kernel_support (void)
+{
+  return __y2038_linux_support;
+}
+
 static inline void
 _libc_vdso_platform_setup (void)
 {

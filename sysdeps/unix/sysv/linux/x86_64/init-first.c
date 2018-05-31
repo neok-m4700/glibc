@@ -29,6 +29,12 @@ long int (*VDSO_SYMBOL(getcpu)) (unsigned *, unsigned *, void *)
 
 extern __typeof (clock_gettime) __syscall_clock_gettime attribute_hidden;
 
+int __y2038_linux_support;
+
+int __y2038_kernel_support (void)
+{
+  return __y2038_linux_support;
+}
 
 static inline void
 __vdso_platform_setup (void)

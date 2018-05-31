@@ -35,6 +35,13 @@ void *VDSO_SYMBOL(sigtramp32);
 void *VDSO_SYMBOL(sigtramp_rt32);
 #endif
 
+int __y2038_linux_support;
+
+int __y2038_kernel_support (void)
+{
+  return __y2038_linux_support;
+}
+
 static inline void
 _libc_vdso_platform_setup (void)
 {

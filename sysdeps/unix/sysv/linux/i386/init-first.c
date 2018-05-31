@@ -25,6 +25,13 @@
 long int (*VDSO_SYMBOL (clock_gettime)) (clockid_t, struct timespec *)
   attribute_hidden;
 
+int __y2038_linux_support;
+
+int __y2038_kernel_support (void)
+{
+  return __y2038_linux_support;
+}
+
 static long int
 clock_gettime_syscall (clockid_t id, struct timespec *tp)
 {

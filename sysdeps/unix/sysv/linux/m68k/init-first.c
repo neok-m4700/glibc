@@ -24,6 +24,13 @@
 #include <dl-vdso.h>
 #include <m68k-vdso.h>
 
+int __y2038_linux_support;
+
+int __y2038_kernel_support (void)
+{
+  return __y2038_linux_support;
+}
+
 static inline void
 _libc_vdso_platform_setup (void)
 {

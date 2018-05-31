@@ -8,6 +8,7 @@ endif
 
 ifeq ($(subdir),misc)
 gen-as-const-headers += sigaltstack-offsets.sym
+sysdep_routines += y2038-dummy
 endif
 
 ifeq ($(subdir),math)

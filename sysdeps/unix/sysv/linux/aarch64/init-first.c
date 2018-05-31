@@ -24,6 +24,13 @@ int (*VDSO_SYMBOL(gettimeofday)) (struct timeval *, void *) attribute_hidden;
 int (*VDSO_SYMBOL(clock_gettime)) (clockid_t, struct timespec *);
 int (*VDSO_SYMBOL(clock_getres)) (clockid_t, struct timespec *);
 
+int __y2038_linux_support;
+
+int __y2038_kernel_support (void)
+{
+  return __y2038_linux_support;
+}
+
 static inline void
 _libc_vdso_platform_setup (void)
 {
