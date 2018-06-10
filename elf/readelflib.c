@@ -45,7 +45,7 @@ process_elf_file (const char *file_name, const char *lib, int *flag,
 {
   int i;
   unsigned int j;
-  ElfW(Addr) loadaddr;
+  ElfW(Addr) loadaddr, loadaddr2;
   unsigned int dynamic_addr;
   size_t dynamic_size;
   char *program_interpreter;
@@ -189,15 +189,51 @@ process_elf_file (const char *file_name, const char *lib, int *flag,
   dynamic_segment = (ElfW(Dyn) *) (file_contents + dynamic_addr);
   check_ptr (dynamic_segment);
 
+  // inspired from stackoverflow.com/a/10865542
+  ElfW(Shdr) * sec;
+  ElfW(Shdr) * shdr = (ElfW(Shdr) *) (file_contents + elf_header->e_shoff);
+  ElfW(Shdr) * sh_strtab = &shdr[elf_header->e_shstrndx];
+  const char * sh_strtab_p = file_contents + sh_strtab->sh_offset;
+  if (opt_verbose && 0) // debug only
+  	for (i = 0; i < elf_header->e_shnum; ++i)
+  		fprintf(stderr, "%2d: %4d '%s'\n", i, shdr[i].sh_name, sh_strtab_p + shdr[i].sh_name);
+
   /* Find the string table.  */
   dynamic_strings = NULL;
+
   for (dyn_entry = dynamic_segment; dyn_entry->d_tag != DT_NULL;
        ++dyn_entry)
     {
       check_ptr (dyn_entry);
       if (dyn_entry->d_tag == DT_STRTAB)
 	{
-	  dynamic_strings = (char *) (file_contents + dyn_entry->d_un.d_val - loadaddr);
+		loadaddr2 = loadaddr;
+		// patchelf fix, find the correct PT_LOAD segment associated wih the segment associated with section ".dynstr"
+		for (i = 0, segment = elf_pheader; i < elf_header->e_phnum; i++, segment++)
+		{
+			if (segment->p_type == PT_LOAD)
+			{
+				// inspired from binutils/readelf.c (slurp_hppa_unwind_table)
+				// find the section ".dynstr" section associated with this PT_LOAD segment
+				// when we hit the correct combination of PT_LOAD segment + ".dynstr" section, change the loadaddr
+				for (j = 0, sec = &shdr[0]; j < elf_header->e_shnum; ++j, ++sec)
+				{
+					if (sec->sh_addr >= segment->p_vaddr &&
+						(sec->sh_addr + sec->sh_size <= segment->p_vaddr + segment->p_memsz))
+					{
+						if (!strcmp(sh_strtab_p + sec->sh_name, ".dynstr"))
+						{
+			    			loadaddr2 = segment->p_vaddr - segment->p_offset;
+			    			break;	
+						}
+					}
+				}
+			}
+		}
+		if (opt_verbose && loadaddr2 != loadaddr)
+			fprintf(stderr, "%s: loadaddr=%lu => loadaddr2=%lu\n", lib, (unsigned long) loadaddr, (unsigned long) loadaddr2);
+
+	  dynamic_strings = (char *) (file_contents + dyn_entry->d_un.d_val - loadaddr2);
 	  check_ptr (dynamic_strings);
 	  break;
 	}
